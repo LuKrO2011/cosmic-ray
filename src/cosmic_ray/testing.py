@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shlex
 import subprocess
 import traceback
@@ -9,6 +10,43 @@ import traceback
 from cosmic_ray.work_item import TestOutcome
 
 log = logging.getLogger(__name__)
+
+_ASSERTION_TYPES = frozenset({"AssertionError", "Failed"})
+
+
+def _classify_failure(output: str) -> TestOutcome:
+    """Parse pytest output to classify how a test killed the mutant.
+
+    Returns KILLED_ASSERTION if all failures raised AssertionError or pytest's
+    own "Failed:" (e.g. if a expected exception was not raised).
+	Returns KILLED_EXCEPTION if any failure used a different exception.
+	Returns KILLED when the output cannot be parsed.
+    """
+    # Primary: summary lines that carry the exception type explicitly.
+    # Format: "FAILED path::test - ExcType: message"
+    summary = re.findall(r"^FAILED .+ - (.+?)(?::|$)", output, re.MULTILINE)
+    if summary:
+        types = [t.strip() for t in summary]
+        return TestOutcome.KILLED_EXCEPTION if any(t not in _ASSERTION_TYPES for t in types) else TestOutcome.KILLED_ASSERTION
+
+    # Fallback: collect exception types from:
+    #   • "E   ExcType:" prefixed traceback lines
+    #   • "path:line: ExcType" footer lines (pytest assertion rewriting emits no
+    #     exception-type prefix on "E   assert ..." lines, only the footer)
+    exc_types = re.findall(
+        r"(?:^E\s+|^\S+:\d+: )(\w[\w.]*(?:Error|Exception)|Failed)(?::|$)",
+        output, re.MULTILINE,
+    )
+    if exc_types:
+        return TestOutcome.KILLED_EXCEPTION if any(t not in _ASSERTION_TYPES for t in exc_types) else TestOutcome.KILLED_ASSERTION
+
+    # FAILED lines present but no typed exception captured due to assertion rewriting
+    # only applies to AssertionError, so treat as assertion kill.
+    if re.search(r"^FAILED ", output, re.MULTILINE):
+        return TestOutcome.KILLED_ASSERTION
+
+    return TestOutcome.KILLED
+
 
 # We use an asyncio-subprocess-based approach here instead of a simple
 # subprocess.run()-based approach because there are problems with timeouts and
@@ -48,7 +86,8 @@ def run_tests(command, timeout):
         return (TestOutcome.SURVIVED, proc.stdout.decode("utf-8"))
 
     except subprocess.CalledProcessError as err:
-        return (TestOutcome.KILLED, err.output.decode("utf-8"))
+        output = err.output.decode("utf-8")
+        return (_classify_failure(output), output)
 
     except subprocess.TimeoutExpired:
         return (TestOutcome.KILLED, "timeout")

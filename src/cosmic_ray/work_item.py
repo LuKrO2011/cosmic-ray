@@ -25,7 +25,9 @@ class TestOutcome(StrEnum):
     """A enum of the possible outcomes for any mutant test run."""
 
     SURVIVED = "survived"
-    KILLED = "killed"
+    KILLED = "killed"                        # fallback (timeout, unknown, non-pytest)
+    KILLED_ASSERTION = "killed (assertion)"  # test failed with AssertionError
+    KILLED_EXCEPTION = "killed (exception)"  # test failed with non-assertion exception
     INCOMPETENT = "incompetent"
 
 

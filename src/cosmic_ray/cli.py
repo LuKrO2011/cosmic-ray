@@ -165,7 +165,7 @@ def baseline(config_file, session_file):
             cosmic_ray.commands.execute(db, cfg)
 
             result = next(db.results)[1]
-            if result.test_outcome == TestOutcome.KILLED:
+            if result.is_killed:
                 message = ["Baseline failed. Execution with no mutation gives those following errors:"]
                 for line in result.output.split("\n"):
                     message.append(f"  >>> {line}")
