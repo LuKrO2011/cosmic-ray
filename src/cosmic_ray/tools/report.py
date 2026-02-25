@@ -1,9 +1,11 @@
 "Tool for printing reports on mutation testing sessions."
 
 import click
+from collections import Counter
 
 from cosmic_ray.tools.survival_rate import kills_count, survival_rate
 from cosmic_ray.work_db import WorkDB, use_db
+from cosmic_ray.work_item import TestOutcome
 
 
 @click.command()
@@ -20,7 +22,11 @@ def report(show_output, show_diff, show_pending, surviving_only, session_file):
     """Print a nicely formatted report of test results and some basic statistics."""
 
     with use_db(session_file, WorkDB.Mode.open) as db:
+        outcome_counts = Counter()
         for work_item, result in db.completed_work_items:
+            if result.test_outcome is not None:
+                outcome_counts[result.test_outcome] += 1
+
             if surviving_only and result.is_killed:
                 continue
 
@@ -51,6 +57,10 @@ def report(show_output, show_diff, show_pending, surviving_only, session_file):
             print(f"complete: {num_complete} ({num_complete / num_items * 100:.2f}%)")
             num_killed = kills_count(db)
             print(f"surviving mutants: {num_complete - num_killed} ({survival_rate(db):.2f}%)")
+            print()
+            print("outcome breakdown:")
+            for outcome in TestOutcome:
+                print(f"  {outcome.value}: {outcome_counts[outcome]}")
         else:
             print("no jobs completed")
 

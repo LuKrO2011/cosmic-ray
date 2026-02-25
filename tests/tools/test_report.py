@@ -33,3 +33,21 @@ def test_smoke_test_for_report_on_executed_session(execd_session):
         [sys.executable, "-m", "cosmic_ray.tools.report", str(execd_session.session)],
         cwd=str(execd_session.session.parent),
     )
+
+
+def test_report_output_breakdown_on_executed_session(execd_session):
+    result = subprocess.run(
+        [sys.executable, "-m", "cosmic_ray.tools.report", str(execd_session.session)],
+        cwd=str(execd_session.session.parent),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    stdout = result.stdout
+    assert "outcome breakdown:" in stdout
+    assert "survived:" in stdout
+    assert "killed:" in stdout
+    assert "killed (assertion):" in stdout
+    assert "killed (exception):" in stdout
+    assert "incompetent:" in stdout
