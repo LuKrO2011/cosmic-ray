@@ -1,7 +1,8 @@
 "Tool for printing reports on mutation testing sessions."
 
-import click
 from collections import Counter
+
+import click
 
 from cosmic_ray.tools.survival_rate import kills_count, survival_rate
 from cosmic_ray.work_db import WorkDB, use_db
