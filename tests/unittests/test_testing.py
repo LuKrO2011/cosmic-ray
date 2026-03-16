@@ -79,6 +79,16 @@ tests/foo.py:6: TypeError
 ============================== 1 failed in 0.05s ==============================
 """
 
+COLLECTION_ERROR_OUTPUT = """\
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+___ ERROR collecting tests/test_sut.py ___
+E   SyntaxError: invalid syntax (sut.py, line 5)
+
+============================== 1 error in 0.12s ==============================
+"""
+
 EMPTY_OUTPUT = ""
 UNRELATED_OUTPUT = "some random output with no pytest info"
 
@@ -112,6 +122,13 @@ class TestClassifyFailure:
     def test_location_line_exception(self):
         assert _classify_failure(LOCATION_EXCEPTION_OUTPUT) == work_item.TestOutcome.KILLED_EXCEPTION
 
+    def test_collection_error_returns_killed_import(self):
+        assert _classify_failure(COLLECTION_ERROR_OUTPUT) == work_item.TestOutcome.KILLED_IMPORT
+
+    def test_error_collecting_line_returns_killed_import(self):
+        output = "ERROR collecting tests/test_foo.py\nE   SyntaxError: invalid syntax\n"
+        assert _classify_failure(output) == work_item.TestOutcome.KILLED_IMPORT
+
     def test_empty_output_returns_killed(self):
         assert _classify_failure(EMPTY_OUTPUT) == work_item.TestOutcome.KILLED
 
@@ -140,3 +157,7 @@ class TestRunTestsIntegration:
     def test_killed_exception_on_type_error(self):
         outcome, output = run_tests(self._cmd("test_exception_fail.py"), timeout=30)
         assert outcome == work_item.TestOutcome.KILLED_EXCEPTION
+
+    def test_killed_import_on_syntax_error(self):
+        outcome, output = run_tests(self._cmd("test_import_error.py"), timeout=30)
+        assert outcome == work_item.TestOutcome.KILLED_IMPORT

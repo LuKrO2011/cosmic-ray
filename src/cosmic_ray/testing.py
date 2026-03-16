@@ -17,11 +17,18 @@ _ASSERTION_TYPES = frozenset({"AssertionError", "Failed"})
 def _classify_failure(output: str) -> TestOutcome:
     """Parse pytest output to classify how a test killed the mutant.
 
+    Returns KILLED_IMPORT if the mutant caused a collection/import error (no
+    tests ran at all).
     Returns KILLED_ASSERTION if all failures raised AssertionError or pytest's
     own "Failed:" (e.g. if a expected exception was not raised).
-	Returns KILLED_EXCEPTION if any failure used a different exception.
-	Returns KILLED when the output cannot be parsed.
+    Returns KILLED_EXCEPTION if any failure used a different exception.
+    Returns KILLED when the output cannot be parsed.
     """
+    # Import-time / collection errors: no tests ran at all.
+    # Pytest wraps the section as "==== ERRORS ====" and the entry as "___ ERROR collecting ... ___".
+    if re.search(r"ERROR collecting", output):
+        return TestOutcome.KILLED_IMPORT
+
     # Primary: summary lines that carry the exception type explicitly.
     # Format: "FAILED path::test - ExcType: message"
     summary = re.findall(r"^FAILED .+ - (.+?)(?::|$)", output, re.MULTILINE)

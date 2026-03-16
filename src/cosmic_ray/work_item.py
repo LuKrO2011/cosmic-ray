@@ -28,6 +28,7 @@ class TestOutcome(StrEnum):
     KILLED = "killed"                        # fallback (timeout, unknown, non-pytest)
     KILLED_ASSERTION = "killed (assertion)"  # test failed with AssertionError
     KILLED_EXCEPTION = "killed (exception)"  # test failed with non-assertion exception
+    KILLED_IMPORT = "killed (import)"        # mutant caused import/collection error; no tests ran
     INCOMPETENT = "incompetent"
 
 

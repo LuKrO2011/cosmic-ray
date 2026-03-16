@@ -84,6 +84,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 120
+exclude = ["tests/resources/failure_causes_sut/sut_syntax_error.py"]
 
 [tool.ruff.lint]
 select = [
